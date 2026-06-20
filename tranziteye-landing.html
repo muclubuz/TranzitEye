@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TranzitEye — Chiptasiz yo'lovchini AI ko'radi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A1622;
+    --bg-panel:#101F33;
+    --bg-panel-2:#15263D;
+    --text:#EDF3FA;
+    --text-muted:#8DA0B8;
+    --text-faint:#5C7390;
+    --accent:#FFC857;
+    --accent-dim:#7A6428;
+    --go:#4FE0A3;
+    --alert:#FF6B4A;
+    --border:rgba(237,243,250,0.09);
+    --border-strong:rgba(237,243,250,0.16);
+    --font-display:'Space Grotesk', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'IBM Plex Mono', monospace;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  html{scroll-behavior:smooth;}
+
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background-image:
+      repeating-linear-gradient(90deg, rgba(237,243,250,0.025) 0px, rgba(237,243,250,0.025) 1px, transparent 1px, transparent 96px),
+      repeating-linear-gradient(0deg, rgba(237,243,250,0.025) 0px, rgba(237,243,250,0.025) 1px, transparent 1px, transparent 96px);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  a{color:inherit; text-decoration:none;}
+  img,svg{display:block;}
+
+  .wrap{max-width:1180px; margin:0 auto; padding:0 28px; position:relative; z-index:1;}
+
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:var(--accent);
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:18px; height:1px;
+    background:var(--accent);
+    display:inline-block;
+  }
+
+  h1,h2,h3{font-family:var(--font-display); font-weight:600; letter-spacing:-0.01em;}
+
+  /* ---------- NAV ---------- */
+  header{
+    position:sticky; top:0; z-index:50;
+    background:rgba(10,22,34,0.86);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+  }
+  .nav{
+    display:flex; align-items:center; justify-content:space-between;
+    height:72px;
+  }
+  .logo{
+    display:flex; align-items:center; gap:10px;
+    font-family:var(--font-display); font-weight:700; font-size:19px;
+    letter-spacing:-0.01em;
+  }
+  .logo svg{width:30px; height:30px; flex-shrink:0;}
+
+  .nav-links{display:flex; align-items:center; gap:36px;}
+  .nav-links a{
+    font-size:14.5px; color:var(--text-muted);
+    transition:color .2s ease;
+  }
+  .nav-links a:hover{color:var(--text);}
+
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:var(--font-body); font-weight:600; font-size:14.5px;
+    padding:11px 22px;
+    border-radius:8px;
+    border:1px solid transparent;
+    cursor:pointer;
+    transition:transform .15s ease, background .2s ease, border-color .2s ease;
+    white-space:nowrap;
+  }
+  .btn-primary{background:var(--accent); color:#1A1304;}
+  .btn-primary:hover{transform:translateY(-1px); background:#FFD274;}
+  .btn-ghost{border-color:var(--border-strong); color:var(--text);}
+  .btn-ghost:hover{border-color:var(--accent); color:var(--accent);}
+
+  .nav-cta{display:flex; align-items:center; gap:14px;}
+
+  .burger{display:none; flex-direction:column; gap:5px; cursor:pointer; background:none; border:none; padding:6px;}
+  .burger span{width:22px; height:2px; background:var(--text);}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    padding:88px 0 96px;
+    position:relative;
+  }
+  .hero-grid{
+    display:grid;
+    grid-template-columns:1.05fr 0.95fr;
+    gap:64px;
+    align-items:center;
+  }
+  .hero h1{
+    font-size:clamp(2.4rem, 4.6vw, 3.8rem);
+    line-height:1.06;
+    margin:20px 0 22px;
+  }
+  .hero h1 span{color:var(--accent);}
+  .hero p.lead{
+    font-size:17.5px;
+    color:var(--text-muted);
+    max-width:480px;
+    margin-bottom:34px;
+  }
+  .hero-actions{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:46px;}
+
+  .hero-tags{
+    display:flex; gap:28px; flex-wrap:wrap;
+    font-family:var(--font-mono); font-size:12.5px; color:var(--text-faint);
+  }
+  .hero-tags b{color:var(--text); font-weight:500;}
+
+  /* ---------- SCAN VISUAL (signature element) ---------- */
+  .scan-stage{
+    position:relative;
+    background:var(--bg-panel);
+    border:1px solid var(--border-strong);
+    border-radius:18px;
+    aspect-ratio:4/3.1;
+    overflow:hidden;
+    padding:26px 22px 22px;
+  }
+  .scan-stage-header{
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:var(--font-mono); font-size:11px; color:var(--text-faint);
+    letter-spacing:.08em; text-transform:uppercase;
+    margin-bottom:18px;
+  }
+  .rec-dot{width:7px; height:7px; border-radius:50%; background:var(--alert); display:inline-block; margin-right:6px; animation:blink 1.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+
+  .scan-row{
+    position:relative;
+    height:62%;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    padding:0 4%;
+    border-bottom:1px solid var(--border);
+  }
+  .pax{position:relative; display:flex; flex-direction:column; align-items:center; width:18%;}
+  .pax-head{width:22px; height:22px; border-radius:50%; background:#3A4F6B; margin-bottom:4px;}
+  .pax-body{width:34px; height:46px; border-radius:10px 10px 0 0; background:#3A4F6B;}
+
+  .tag{
+    position:absolute; top:-30px;
+    font-family:var(--font-mono); font-size:10.5px; font-weight:500;
+    padding:4px 8px; border-radius:5px;
+    white-space:nowrap;
+    opacity:0;
+  }
+  .tag-go{background:rgba(79,224,163,0.14); color:var(--go); border:1px solid rgba(79,224,163,0.35);}
+  .tag-alert{background:rgba(255,107,74,0.14); color:var(--alert); border:1px solid rgba(255,107,74,0.35);}
+
+  .pax1 .tag{animation:reveal1 7s infinite;}
+  .pax2 .tag{animation:reveal2 7s infinite;}
+  .pax3 .tag{animation:reveal3 7s infinite;}
+  .pax4 .tag{animation:reveal4 7s infinite;}
+
+  @keyframes reveal1{0%,4%{opacity:0;}8%,82%{opacity:1;}90%,100%{opacity:0;}}
+  @keyframes reveal2{0%,26%{opacity:0;}30%,82%{opacity:1;}90%,100%{opacity:0;}}
+  @keyframes reveal3{0%,48%{opacity:0;}52%,82%{opacity:1;}90%,100%{opacity:0;}}
+  @keyframes reveal4{0%,70%{opacity:0;}74%,82%{opacity:1;}90%,100%{opacity:0;}}
+
+  .reticle{
+    position:absolute; top:-12px; bottom:8px;
+    width:21%;
+    pointer-events:none;
+    animation:sweep 7s linear infinite;
+  }
+  .reticle i{position:absolute; width:14px; height:14px; border-color:var(--accent); border-style:solid; opacity:.9;}
+  .reticle i:nth-child(1){top:0; left:0; border-width:2px 0 0 2px;}
+  .reticle i:nth-child(2){top:0; right:0; border-width:2px 2px 0 0;}
+  .reticle i:nth-child(3){bottom:0; left:0; border-width:0 0 2px 2px;}
+  .reticle i:nth-child(4){bottom:0; right:0; border-width:0 2px 2px 0;}
+  @keyframes sweep{
+    0%{left:2%;} 11%{left:2%;}
+    26%{left:24%;} 37%{left:24%;}
+    48%{left:46%;} 59%{left:46%;}
+    70%{left:68%;} 82%{left:68%;}
+    100%{left:68%;}
+  }
+
+  .scan-readout{
+    margin-top:18px;
+    display:flex; justify-content:space-between;
+    font-family:var(--font-mono); font-size:11px; color:var(--text-faint);
+  }
+  .scan-readout b{color:var(--accent); font-weight:500;}
+
+  @media (prefers-reduced-motion:reduce){
+    .reticle, .pax1 .tag, .pax2 .tag, .pax3 .tag, .pax4 .tag, .rec-dot{animation:none !important;}
+    .reticle{left:2%;}
+    .pax1 .tag{opacity:1;}
+  }
+
+  /* ---------- SECTIONS GENERIC ---------- */
+  section{padding:104px 0; position:relative; border-top:1px solid var(--border);}
+  .sec-head{max-width:620px; margin-bottom:56px;}
+  .sec-head h2{font-size:clamp(1.7rem,3vw,2.4rem); margin-top:16px;}
+  .sec-head p{color:var(--text-muted); font-size:16px; margin-top:14px;}
+
+  /* ---------- PROBLEM ---------- */
+  .problem-cards{display:grid; grid-template-columns:repeat(3,1fr); gap:24px;}
+  .p-card{
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:28px 26px;
+  }
+  .p-card .mark{font-family:var(--font-mono); color:var(--alert); font-size:13px; letter-spacing:.06em;}
+  .p-card h3{font-size:18px; margin:14px 0 10px; font-weight:600;}
+  .p-card p{color:var(--text-muted); font-size:14.5px;}
+
+  /* ---------- HOW IT WORKS ---------- */
+  .steps{display:grid; grid-template-columns:repeat(3,1fr); gap:0; position:relative;}
+  .step{padding:0 26px 0 0; position:relative;}
+  .step:not(:last-child)::after{
+    content:""; position:absolute; top:18px; right:-2px; width:calc(100% - 0px);
+    border-top:1px dashed var(--border-strong);
+  }
+  .step-num{
+    font-family:var(--font-mono); font-size:13px; color:var(--accent);
+    display:flex; align-items:center; gap:10px; margin-bottom:18px;
+  }
+  .step-num::before{content:""; width:36px; height:36px; border-radius:50%; border:1px solid var(--accent-dim); flex-shrink:0;}
+  .step h3{font-size:19px; margin-bottom:10px;}
+  .step p{color:var(--text-muted); font-size:14.5px; max-width:280px;}
+
+  /* ---------- BENEFITS ---------- */
+  .benefit-grid{display:grid; grid-template-columns:1fr 1fr; gap:24px;}
+  .benefit-col{
+    background:var(--bg-panel); border:1px solid var(--border); border-radius:16px; padding:32px;
+  }
+  .benefit-col h3{font-size:18px; margin-bottom:20px; display:flex; align-items:center; gap:10px;}
+  .benefit-col h3 i{width:8px; height:8px; border-radius:50%; background:var(--accent); display:inline-block;}
+  .benefit-col ul{list-style:none;}
+  .benefit-col li{
+    padding:13px 0; border-top:1px solid var(--border);
+    font-size:14.5px; color:var(--text-muted);
+    display:flex; gap:10px;
+  }
+  .benefit-col li:first-of-type{border-top:none;}
+  .benefit-col li::before{content:"→"; color:var(--accent); flex-shrink:0;}
+
+  /* ---------- PILOT / CTA ---------- */
+  .pilot{
+    background:var(--bg-panel);
+    border:1px solid var(--border-strong);
+    border-radius:20px;
+    padding:64px;
+    display:grid;
+    grid-template-columns:1.2fr 1fr;
+    gap:48px;
+    align-items:center;
+  }
+  .pilot h2{font-size:clamp(1.6rem,2.8vw,2.1rem); margin-bottom:16px;}
+  .pilot p{color:var(--text-muted); font-size:15.5px; max-width:440px;}
+  .pilot-contacts{display:flex; flex-direction:column; gap:14px;}
+  .contact-row{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--bg-panel-2); border:1px solid var(--border);
+    border-radius:10px; padding:16px 20px;
+  }
+  .contact-row .label{font-family:var(--font-mono); font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.08em;}
+  .contact-row .val{font-size:14.5px; margin-top:4px;}
+  .contact-row a.go{color:var(--accent); font-size:13px; font-family:var(--font-mono);}
+
+  /* ---------- FOOTER ---------- */
+  footer{padding:48px 0; border-top:1px solid var(--border);}
+  .foot-row{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;}
+  .foot-logo{display:flex; align-items:center; gap:9px; font-family:var(--font-display); font-weight:700; font-size:16px;}
+  .foot-logo svg{width:22px; height:22px;}
+  footer .tagline{color:var(--text-faint); font-size:13px; font-family:var(--font-mono);}
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width:920px){
+    .nav-links{display:none;}
+    .burger{display:flex;}
+    .hero-grid{grid-template-columns:1fr; gap:48px;}
+    .problem-cards{grid-template-columns:1fr;}
+    .steps{grid-template-columns:1fr; gap:36px;}
+    .step::after{display:none;}
+    .benefit-grid{grid-template-columns:1fr;}
+    .pilot{grid-template-columns:1fr; padding:40px 28px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <div class="logo">
+      <svg viewBox="0 0 32 32" fill="none">
+        <path d="M2 16C6 8 12 4 16 4C20 4 26 8 30 16C26 24 20 28 16 28C12 28 6 24 2 16Z" stroke="#FFC857" stroke-width="1.6"/>
+        <circle cx="16" cy="16" r="5.5" fill="#FFC857" fill-opacity="0.15" stroke="#FFC857" stroke-width="1.6"/>
+        <line x1="4" y1="16" x2="28" y2="16" stroke="#FFC857" stroke-width="1" stroke-opacity="0.55"/>
+      </svg>
+      TranzitEye
+    </div>
+    <nav class="nav-links">
+      <a href="#muammo">Muammo</a>
+      <a href="#yechim">Yechim</a>
+      <a href="#qanday">Qanday ishlaydi</a>
+      <a href="#aloqa">Aloqa</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="#aloqa" class="btn btn-primary">Demo so'rash</a>
+    </div>
+    <button class="burger" aria-label="Menyu"><span></span><span></span><span></span></button>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">AI asosida chipta nazorati</div>
+      <h1>Chiptasiz yo'lovchini <span>AI ko'radi.</span></h1>
+      <p class="lead">TranzitEye — avtobusga o'rnatilgan oddiy kamera orqali har bir yo'lovchining chiptasi yoki to'lov kartasini real vaqtda tekshiradigan sun'iy intellekt tizimi.</p>
+      <div class="hero-actions">
+        <a href="#aloqa" class="btn btn-primary">Demo so'rash</a>
+        <a href="#qanday" class="btn btn-ghost">Qanday ishlashini ko'rish</a>
+      </div>
+      <div class="hero-tags">
+        <div><b>Real vaqt</b> — tahlil</div>
+        <div><b>1 marshrut</b> — pilot uchun</div>
+        <div><b>Hardware</b> — mavjud kameralarga moslashadi</div>
+      </div>
+    </div>
+
+    <div class="scan-stage">
+      <div class="scan-stage-header">
+        <span><span class="rec-dot"></span>Jonli kuzatuv</span>
+        <span>Marshrut №42</span>
+      </div>
+      <div class="scan-row">
+        <div class="pax pax1"><span class="tag tag-go">✓ TO'LANGAN</span><div class="pax-head"></div><div class="pax-body"></div></div>
+        <div class="pax pax2"><span class="tag tag-go">✓ TO'LANGAN</span><div class="pax-head"></div><div class="pax-body"></div></div>
+        <div class="pax pax3"><span class="tag tag-alert">⚠ ANIQLANMADI</span><div class="pax-head"></div><div class="pax-body"></div></div>
+        <div class="pax pax4"><span class="tag tag-go">✓ TO'LANGAN</span><div class="pax-head"></div><div class="pax-body"></div></div>
+        <div class="reticle"><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="scan-readout">
+        <span>Tahlil qilindi: <b>4/4</b></span>
+        <span>Aniqlik: <b>real vaqt</b></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="muammo">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Muammo</div>
+      <h2>Nazorat qo'lda, yo'qotish — doimiy.</h2>
+      <p>Nazoratchilar har bir yo'lovchini band soatlarda ulgura olmaydi. Natijada nazorat notekis, yo'qotish esa har kuni takrorlanadi.</p>
+    </div>
+    <div class="problem-cards">
+      <div class="p-card">
+        <div class="mark">01 — DAROMAD</div>
+        <h3>Yo'qolgan tushum</h3>
+        <p>Chiptasiz tushib qolgan har bir yo'lovchi — transport kompaniyasi uchun ko'rinmas, lekin doimiy moliyaviy zarar.</p>
+      </div>
+      <div class="p-card">
+        <div class="mark">02 — NAZORAT</div>
+        <h3>Notekis tekshiruv</h3>
+        <p>Bitta nazoratchi band reysda hammani ulgurib tekshira olmaydi — natija inson omiliga bog'liq bo'lib qoladi.</p>
+      </div>
+      <div class="p-card">
+        <div class="mark">03 — STATISTIKA</div>
+        <h3>Ma'lumot yo'q</h3>
+        <p>Qaysi marshrutda, qaysi soatda ko'proq yo'qotish bo'layotgani haqida transport kompaniyasida aniq raqam yo'q.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="yechim">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Yechim</div>
+      <h2>Kamera ko'radi, AI hal qiladi.</h2>
+      <p>Mavjud kameralarga o'rnatiladigan AI modul har bir yo'lovchini kuzatadi va to'lov holatini avtomatik aniqlaydi — qo'shimcha qurilma sotib olish shart emas.</p>
+    </div>
+  </div>
+</section>
+
+<section id="qanday">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Qanday ishlaydi</div>
+      <h2>Uch bosqichda — boshidan oxirigacha</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <h3>Kamera kuzatadi</h3>
+        <p>Avtobusdagi mavjud yoki yangi kamera har bir kirgan yo'lovchini real vaqtda yozib boradi.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <h3>AI tahlil qiladi</h3>
+        <p>Tizim chipta skaneri yoki to'lov kartasi harakatini aniqlab, to'lov amalga oshganini tekshiradi.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <h3>Signal beradi</h3>
+        <p>To'lanmagan holat aniqlansa, nazoratchiga ogohlantirish yuboriladi, barcha hodisalar hisobotga tushadi.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Foyda</div>
+      <h2>Ikki tomon uchun ham qulay</h2>
+    </div>
+    <div class="benefit-grid">
+      <div class="benefit-col">
+        <h3><i></i>Transport kompaniyasi uchun</h3>
+        <ul>
+          <li>Daromad yo'qotishini kamaytiradi</li>
+          <li>Real vaqtda marshrut bo'yicha statistika beradi</li>
+          <li>Nazoratchiga bo'lgan qaramlikni kamaytiradi</li>
+          <li>Mavjud kameralarga moslashadi, qimmat hardware shart emas</li>
+        </ul>
+      </div>
+      <div class="benefit-col">
+        <h3><i></i>Yo'lovchi uchun</h3>
+        <ul>
+          <li>Tushish-chiqish jarayoni tezroq va to'siqsiz</li>
+          <li>Nazorat barchaga bir xil tarzda qo'llanadi</li>
+          <li>Navbat va ortiqcha tekshiruvlar kamayadi</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="aloqa">
+  <div class="wrap">
+    <div class="pilot">
+      <div>
+        <div class="eyebrow">Pilot loyiha</div>
+        <h2>Bitta marshrutdan boshlaymiz.</h2>
+        <p>TranzitEye avval bitta shahar yoki bitta transport kompaniyasi bilan sinov tariqasida ishga tushiriladi, natijalar tasdiqlangach butun shahar bo'ylab kengaytiriladi.</p>
+      </div>
+      <div class="pilot-contacts">
+        <div class="contact-row">
+          <div>
+            <div class="label">Email</div>
+            <div class="val">hello@tranziteye.uz</div>
+          </div>
+          <a class="go" href="mailto:hello@tranziteye.uz">Yozish →</a>
+        </div>
+        <div class="contact-row">
+          <div>
+            <div class="label">Telegram</div>
+            <div class="val">@tranziteye</div>
+          </div>
+          <a class="go" href="https://t.me/tranziteye">Ochish →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-row">
+    <div class="foot-logo">
+      <svg viewBox="0 0 32 32" fill="none">
+        <path d="M2 16C6 8 12 4 16 4C20 4 26 8 30 16C26 24 20 28 16 28C12 28 6 24 2 16Z" stroke="#FFC857" stroke-width="1.6"/>
+        <circle cx="16" cy="16" r="5.5" fill="#FFC857" fill-opacity="0.15" stroke="#FFC857" stroke-width="1.6"/>
+        <line x1="4" y1="16" x2="28" y2="16" stroke="#FFC857" stroke-width="1" stroke-opacity="0.55"/>
+      </svg>
+      TranzitEye
+    </div>
+    <div class="tagline">AI asosida chipta nazorati — © 2026</div>
+  </div>
+</footer>
+
+<script>
+  document.querySelector('.burger').addEventListener('click', function(){
+    var nav = document.querySelector('.nav-links');
+    var open = nav.style.display === 'flex';
+    nav.style.cssText = open ? '' : 'display:flex; flex-direction:column; position:absolute; top:72px; left:0; right:0; background:#0A1622; padding:20px 28px; gap:18px; border-bottom:1px solid rgba(237,243,250,0.09);';
+  });
+</script>
+
+</body>
+</html>
